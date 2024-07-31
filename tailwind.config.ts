@@ -1,5 +1,13 @@
 import type { Config } from "tailwindcss";
 import { fontFamily } from "tailwindcss/defaultTheme";
+const pxToRem = (px: number, base = 16) => `${px / base}rem`;
+const range = (start: number, end: number) => {
+  return [...Array(end - start + 1).keys()].map((i) => i + start);
+};
+interface Spacing {
+  [key: string]: string;
+}
+
 const config = {
   darkMode: ["class"],
   content: [
@@ -74,6 +82,14 @@ const config = {
       },
       fontFamily: {
         sans: ["var(--font-sans)", ...fontFamily.sans],
+      },
+      spacing: {
+        ...range(1, 400)
+          .map((a) => a * 5)
+          .reduce<Spacing>((acc, px) => {
+            acc[`${px}pxr`] = pxToRem(px);
+            return acc;
+          }, {}),
       },
     },
   },
