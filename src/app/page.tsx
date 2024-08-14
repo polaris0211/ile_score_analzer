@@ -1,5 +1,5 @@
 "use client";
-
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,102 +12,105 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useStore } from "@/lib/store";
+const twoDecimalPlaces = (value: number) => {
+  return Number(value.toFixed(2)) === value;
+};
+
+const scoreSchema = z
+  .number({
+    required_error: "Score is required",
+    invalid_type_error: "Score must be a number",
+  })
+  .int("Score must be an integer")
+  .min(0, "Score must be at least 0")
+  .max(100, "Score cannot exceed 100");
+
+const averageSchema = z
+  .number({
+    required_error: "Average is required",
+    invalid_type_error: "Average must be a number",
+  })
+  .min(0, "Average must be at least 0")
+  .max(100, "Average cannot exceed 100")
+  .refine(twoDecimalPlaces, "Average must have at most two decimal places");
+
+const topThirtyAverageSchema = z
+  .number({
+    required_error: "Top 30% average is required",
+    invalid_type_error: "Top 30% average must be a number",
+  })
+  .min(0, "Top 30% average must be at least 0")
+  .max(100, "Top 30% average cannot exceed 100")
+  .refine(
+    twoDecimalPlaces,
+    "Top 30% average must have at most two decimal places"
+  );
 
 export default function Home() {
   const [score, setScore] = useState<string>("");
   const [average, setAverage] = useState<string>("");
   const [topThirtyAverage, setTopThirtyAverage] = useState<string>("");
-  const twoDecimalPlaces = (value: number) => {
-    return (
-      Number.isInteger(value * 100) && Number.isInteger(value * 10) === false
-    );
-  };
-
-  const scoreSchema = z
-    .number({
-      required_error: "Score is required",
-      invalid_type_error: "Score must be a number",
-    })
-    .int("Score must be an integer")
-    .min(0, "Score must be at least 0")
-    .max(100, "Score cannot exceed 100")
-    .refine(Number.isInteger, "Your score shoule be integer");
-
-  const averageSchema = z
-    .number({
-      required_error: "Average is required",
-      invalid_type_error: "Average must be a number",
-    })
-    .min(0, "Average must be at least 0")
-    .max(100, "Average cannot exceed 100")
-    .refine(twoDecimalPlaces, "Average must have two decimal places");
-
-  const topThirtyAverageSchema = z
-    .number({
-      required_error: "Top 30% average is required",
-      invalid_type_error: "Top 30% average must be a number",
-    })
-    .min(0, "Top 30% average must be at least 0")
-    .max(100, "Top 30% average cannot exceed 100")
-    .refine(twoDecimalPlaces, "Top 30% average must have two decimal places");
-
+  const store = useStore();
   const validateScoreData = () => {
     const errors: string[] = [];
 
+    // Validate score
     try {
-      const parsedScore = scoreSchema.parse(parseInt(score));
-      const parsedAverage = averageSchema.parse(parseFloat(average));
-      const parsedTopThirtyAverage = topThirtyAverageSchema.parse(
-        parseFloat(topThirtyAverage)
-      );
-      console.log([parsedScore, parsedAverage, parsedTopThirtyAverage]);
-      if (parsedAverage >= parsedTopThirtyAverage) {
-        errors.push("The average must be lower than the top 30% average");
-      }
-
-      if (errors.length > 0) {
-        throw new Error("Custom validation failed");
-      }
-
-      return {
-        score: parsedScore,
-        average: parsedAverage,
-        topThirtyAverage: parsedTopThirtyAverage,
-      };
+      scoreSchema.parse(score === "" ? undefined : Number(score));
     } catch (error) {
       if (error instanceof z.ZodError) {
-        error.errors.forEach((err) => {
-          errors.push(err.message);
-        });
-      } else if (
-        error instanceof Error &&
-        error.message === "Custom validation failed"
-      ) {
-        // Do nothing, errors are already in the errors array
-      } else {
-        errors.push(
-          "An unexpected error occurred. Please check your inputs and try again."
-        );
+        errors.push(...error.errors.map((err) => err.message));
       }
+    }
 
+    // Validate average
+    try {
+      averageSchema.parse(average === "" ? undefined : Number(average));
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        errors.push(...error.errors.map((err) => err.message));
+      }
+    }
+
+    // Validate top 30% average
+    try {
+      topThirtyAverageSchema.parse(
+        topThirtyAverage === "" ? undefined : Number(topThirtyAverage)
+      );
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        errors.push(...error.errors.map((err) => err.message));
+      }
+    }
+
+    // Additional custom validation
+    if (
+      average !== "" &&
+      topThirtyAverage !== "" &&
+      Number(average) >= Number(topThirtyAverage)
+    ) {
+      errors.push("The average must be lower than the top 30% average");
+    }
+
+    return errors;
+  };
+
+  const handleAnalyze = () => {
+    const errors = validateScoreData();
+    if (errors.length > 0) {
       // Display each error in a separate toast
       errors.forEach((errorMsg) => {
         toast.error(errorMsg);
       });
-
-      return null;
-    }
-  };
-
-  const handleAnalyze = () => {
-    const validData = validateScoreData();
-    if (validData) {
-      // Perform analysis here
+    } else {
+      store.setTopThirtyAverage(Number.parseFloat(topThirtyAverage));
+      store.setAverage(Number.parseInt(average));
+      store.setAverage(Number.parseInt(average));
+      // All validations passed
       toast.success("Score analyzed successfully!");
-      console.log("Validated data:", validData);
     }
   };
 
