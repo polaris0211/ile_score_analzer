@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
+import { useRouter } from "next/navigation";
 const twoDecimalPlaces = (value: number) => {
   return Number(value.toFixed(2)) === value;
 };
@@ -54,6 +55,12 @@ export default function Home() {
   const [average, setAverage] = useState<string>("");
   const [topThirtyAverage, setTopThirtyAverage] = useState<string>("");
   const store = useStore();
+  const router = useRouter();
+  useEffect(() => {
+    console.log(store.score);
+    console.log(store.average);
+    console.log(store.topThirtyAverage);
+  }, [store]);
   const validateScoreData = () => {
     const errors: string[] = [];
 
@@ -107,8 +114,10 @@ export default function Home() {
       });
     } else {
       store.setTopThirtyAverage(Number.parseFloat(topThirtyAverage));
-      store.setAverage(Number.parseInt(average));
-      store.setAverage(Number.parseInt(average));
+      store.setAverage(Number.parseFloat(average));
+      store.setScore(Number.parseInt(score));
+
+      router.push("/result");
       // All validations passed
       toast.success("Score analyzed successfully!");
     }
